@@ -1,12 +1,10 @@
-package com.oniraanu.basicsignuplogin.register;
+package com.oniraanu.basicsignuplogin.dto.request;
 
 import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-@EqualsAndHashCode
 public class RegisterRequest {
 
     private String firstName;

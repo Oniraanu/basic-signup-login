@@ -1,10 +1,8 @@
 package com.oniraanu.basicsignuplogin.token;
 
 import com.oniraanu.basicsignuplogin.user.User;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+import org.springframework.stereotype.Service;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;

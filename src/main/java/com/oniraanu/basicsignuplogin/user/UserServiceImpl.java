@@ -4,7 +4,8 @@ import com.oniraanu.basicsignuplogin.dto.request.RegisterRequest;
 import com.oniraanu.basicsignuplogin.dto.response.RegisterResponse;
 import com.oniraanu.basicsignuplogin.exception.EmailNotFoundException;
 import com.oniraanu.basicsignuplogin.token.ConfirmationToken;
-import com.oniraanu.basicsignuplogin.token.ConfirmationTokenServiceImpl;
+import com.oniraanu.basicsignuplogin.token.ConfirmationTokenService;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -14,17 +15,17 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Autowired
     private UserRepository userRepository;
 
     @Autowired
-    private ConfirmationTokenServiceImpl confirmationToken;
+    private ConfirmationTokenService confirmationTokenService;
 
     @Autowired
     private ModelMapper mapper;
@@ -43,11 +44,31 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
         String tokenGenerated = UUID.randomUUID().toString();
         ConfirmationToken token = new ConfirmationToken(tokenGenerated, LocalDateTime.now(), LocalDateTime.now().plusMinutes(15), user);
-        confirmationToken.saveToken(token);
+        confirmationTokenService.saveToken(token);
 
         RegisterResponse response = new RegisterResponse();
         mapper.map(savedUser, response);
         return response;
+    }
+
+    private String confirmToken(String token) {
+        ConfirmationToken confirmationToken = confirmationTokenService.findByToken(token);
+
+        if (confirmationToken.getConfirmedAt() != null) {
+            throw new IllegalStateException("email already confirmed");
+        }
+
+        LocalDateTime expiredAt = confirmationToken.getExpiredAt();
+
+        if (expiredAt.isBefore(LocalDateTime.now())) {
+            throw new IllegalStateException("token expired");
+        }
+        confirmationToken.setConfirmedAt(LocalDateTime.now());
+        confirmationTokenService.saveToken(confirmationToken);
+        User user = confirmationToken.getUser();
+        user.setIsVerified(Boolean.TRUE);
+        userRepository.save(user);
+        return "confirmed";
     }
 
     private void validateEmail(String emailAddress) throws EmailNotFoundException {

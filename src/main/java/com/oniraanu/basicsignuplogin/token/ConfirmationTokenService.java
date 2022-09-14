@@ -17,14 +17,7 @@ public class ConfirmationTokenService {
     }
 
     public ConfirmationToken findByToken(String token){
-        return findToken(token);
+        return confirmationTokenRepository.getConfirmationToken(token);
     }
 
-    private ConfirmationToken findToken(String token) throws TokenException {
-        ConfirmationToken confirmationToken = confirmationTokenRepository.getConfirmationToken(token);
-        if (confirmationToken == null) {
-            throw new TokenException("token not found");
-        }
-        return confirmationToken;
-    }
 }

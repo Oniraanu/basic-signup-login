@@ -1,7 +1,10 @@
 package com.oniraanu.basicsignuplogin.user;
 
+import com.mashape.unirest.http.exceptions.UnirestException;
+import com.oniraanu.basicsignuplogin.dto.request.MessageRequest;
 import com.oniraanu.basicsignuplogin.dto.request.RegisterRequest;
 import com.oniraanu.basicsignuplogin.dto.response.RegisterResponse;
+import com.oniraanu.basicsignuplogin.email.EmailService;
 import com.oniraanu.basicsignuplogin.exception.EmailNotFoundException;
 import com.oniraanu.basicsignuplogin.token.ConfirmationToken;
 import com.oniraanu.basicsignuplogin.token.ConfirmationTokenService;
@@ -13,6 +16,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -28,13 +32,16 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private ConfirmationTokenService confirmationTokenService;
 
     @Autowired
+    private EmailService emailService;
+
+    @Autowired
     private ModelMapper mapper;
 
     @Autowired
     private BCryptPasswordEncoder bCryptPasswordEncoder;
 
     @Override
-    public RegisterResponse register(RegisterRequest registerRequest) {
+    public RegisterResponse register(RegisterRequest registerRequest) throws UnirestException {
         validateEmail(registerRequest.getEmailAddress());
         User user = new User();
         mapper.map(registerRequest, user);
@@ -46,12 +53,22 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         ConfirmationToken token = new ConfirmationToken(tokenGenerated, LocalDateTime.now(), LocalDateTime.now().plusMinutes(15), user);
         confirmationTokenService.saveToken(token);
 
+        String link = "http://localhost:8080/api/v1/register/confirm?token=" + tokenGenerated;
+        MessageRequest request = new MessageRequest();
+        request.setSender("bakreolubunmi@yahoo.com");
+        request.setReceiver(savedUser.getEmailAddress());
+        request.setBody("activate your account" + link);
+        request.setSubject("Confirm Account");
+        emailService.sendSimpleMessage(request);
+
         RegisterResponse response = new RegisterResponse();
         mapper.map(savedUser, response);
         return response;
     }
 
-    private String confirmToken(String token) {
+    @Transactional
+    @Override
+    public String confirmToken(String token) {
         ConfirmationToken confirmationToken = confirmationTokenService.findByToken(token);
 
         if (confirmationToken.getConfirmedAt() != null) {
